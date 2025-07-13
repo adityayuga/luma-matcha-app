@@ -1,85 +1,117 @@
-# Quick VPS Deployment for Luma Matcha App
+# Quick Deployment Guide
 
-## 🚀 Option 1: Automated Deployment (Recommended)
+## Your Configuration
+- **VPS IP**: 54.169.51.229
+- **User**: ubuntu
+- **Domain**: lumamatcha.com
 
-### Prerequisites:
-- SSH access to your VPS
-- Flutter installed locally
+## 🚀 Quick Start
+
+### 1. First Time Setup (Run Once)
+```bash
+# Setup your VPS environment
+make setup-vps
+
+# Test SSH connection
+make test-ssh
+```
+
+### 2. Deploy Your App
+```bash
+# Deploy with domain name (recommended)
+make deploy
+
+# OR deploy with IP access only
+make deploy-ip
+```
+
+### 3. Enable HTTPS (Optional but Recommended)
+```bash
+make enable-https
+```
+
+## 📋 Common Commands
+
+### Development
+```bash
+make build          # Build the app
+make clean          # Clean build files
+make analyze        # Check code quality
+make test           # Run tests
+```
+
+### Deployment
+```bash
+make deploy         # Full deployment with domain
+make deploy-ip      # Deploy with IP access
+make quick          # Clean + build + deploy
+make all            # Test + analyze + build + deploy
+```
+
+### Maintenance
+```bash
+make status         # Check VPS status
+make logs           # View server logs
+make restart        # Restart services
+make backup         # Backup current deployment
+```
+
+## 🌐 URLs After Deployment
+
+### HTTP Access
+- http://lumamatcha.com
+- http://www.lumamatcha.com
+- http://54.169.51.229
+
+### HTTPS Access (after running `make enable-https`)
+- https://lumamatcha.com
+- https://www.lumamatcha.com
+
+## 🔧 Alternative: Manual Deployment
 
 ### Deploy with one command:
 ```bash
-./deploy.sh YOUR_VPS_IP YOUR_VPS_USERNAME [OPTIONAL_DOMAIN]
+./deploy.sh 54.169.51.229 ubuntu lumamatcha.com
 ```
 
-**Examples:**
+### First time VPS setup:
 ```bash
-# IP-based deployment
-./deploy.sh 192.168.1.100 ubuntu
-
-# Domain-based deployment
-./deploy.sh 192.168.1.100 ubuntu luma-matcha.com
+./setup-vps.sh
 ```
 
-## 🔧 Option 2: Manual Deployment
+## �️ Troubleshooting
 
-### 1. Build your app:
+### Test SSH Connection
 ```bash
-flutter build web --release
+make test-ssh
 ```
 
-### 2. Upload to your VPS:
+### Check VPS Status
 ```bash
-scp -r build/web/ user@your-vps-ip:/var/www/luma-matcha/
+make status
 ```
 
-### 3. On your VPS, install Nginx:
+### View Server Logs
 ```bash
-sudo apt update
-sudo apt install nginx -y
+make logs
 ```
 
-### 4. Configure Nginx:
+### Restart Services
 ```bash
-sudo nano /etc/nginx/sites-available/luma-matcha
+make restart
 ```
 
-Add this configuration:
-```nginx
-server {
-    listen 80;
-    server_name _;
-    root /var/www/luma-matcha;
-    index index.html;
-    
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-}
+## 📁 File Structure
+```
+luma_app/
+├── Makefile           # Deployment commands
+├── deploy.sh          # Deployment script
+├── setup-vps.sh       # VPS setup script
+├── build/web/         # Flutter build output
+└── lib/               # Flutter source code
 ```
 
-### 5. Enable the site:
-```bash
-sudo ln -s /etc/nginx/sites-available/luma-matcha /etc/nginx/sites-enabled/
-sudo rm /etc/nginx/sites-enabled/default
-sudo nginx -t
-sudo systemctl restart nginx
-```
-
-## 🌐 Access Your App
-
-After deployment, your Luma Matcha app will be available at:
-- **http://YOUR_VPS_IP**
-- **http://YOUR_DOMAIN** (if you have a domain)
-
-## 🔒 Enable HTTPS (Optional but Recommended)
-
-If you have a domain:
-```bash
-sudo apt install certbot python3-certbot-nginx -y
-sudo certbot --nginx -d your-domain.com
-```
-
-## 📱 Features Available
+## ✅ Features Available
 
 ✅ **All social media links work:**
 - Instagram: Opens Luma Matcha Instagram
@@ -93,7 +125,7 @@ sudo certbot --nginx -d your-domain.com
 ✅ **Fast loading** with optimized assets
 ✅ **PWA capabilities** (installable on mobile)
 
-## 📁 Your build includes:
+## � Your build includes:
 - **Size:** ~2.3MB (highly optimized)
 - **Assets:** Your logo and icons
 - **Fonts:** Google Fonts (Crimson Text)
@@ -102,8 +134,26 @@ sudo certbot --nginx -d your-domain.com
 ## 🔄 Updating Your App
 
 When you make changes:
+```bash
+make quick          # Clean, build, and deploy
+```
+
+Or manually:
 1. `flutter build web --release`
 2. Upload new files to VPS
 3. Restart Nginx (optional)
+
+## 🔒 Security Features
+
+- ✅ Firewall configured
+- ✅ Nginx security headers
+- ✅ Gzip compression enabled
+- ✅ Static file caching
+- ✅ HTTPS ready (with domain)
+
+## 💡 Prerequisites
+- Flutter SDK installed
+- SSH access to your VPS
+- Domain name pointing to your VPS (for HTTPS)
 
 That's it! Your professional Luma Matcha web app is ready for the world! 🎉
