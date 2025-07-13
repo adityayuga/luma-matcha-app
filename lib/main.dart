@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
 
 void main() {
-  runApp(LumaMatchaApp());
+  runApp(const LumaMatchaApp());
 }
 
 class MenuItem {
   final String title;
   final Icon icon;
-  final String route;
   final MenuItemData? data;
-  MenuItem({required this.title, required this.icon, required this.route, required this.data});
+  MenuItem({
+    required this.title, 
+    required this.icon, 
+    required this.data
+  });
 }
 
 class MenuItemData {
@@ -27,20 +31,71 @@ const constMenuTypeOpenMap = 'open-map';
 const constBackgroundColor = Color.fromRGBO(254, 255, 250, 1);
 const constPrimaryColor = Color.fromRGBO(69, 99, 48, 1); // Green color
 
+// GoRouter configuration
+final GoRouter _router = GoRouter(
+  initialLocation: '/',
+  debugLogDiagnostics: true,
+  routes: [
+    GoRoute(
+      path: '/',
+      name: 'home',
+      builder: (context, state) => const MenuPage(),
+    ),
+    GoRoute(
+      path: '/image/:title',
+      name: 'image',
+      builder: (context, state) {
+        final title = state.pathParameters['title'] ?? '';
+        final extra = state.extra as Map<String, dynamic>?;
+        return ImageViewerPage(
+          menuItem: extra?['menuItem'] as MenuItem?,
+          title: title,
+        );
+      },
+    ),
+  ],
+  errorBuilder: (context, state) => Scaffold(
+    backgroundColor: constBackgroundColor,
+    appBar: AppBar(
+      title: const Text('Error'),
+      backgroundColor: constPrimaryColor,
+      foregroundColor: Colors.white,
+    ),
+    body: Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 64, color: Colors.red),
+          const SizedBox(height: 16),
+          const Text('Page not found'),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () => context.go('/'),
+            child: const Text('Go to Home'),
+          ),
+        ],
+      ),
+    ),
+  ),
+);
+
 class LumaMatchaApp extends StatelessWidget {
+  const LumaMatchaApp({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'Luma Matcha Jogja',
       theme: ThemeData(primarySwatch: Colors.green),
-      initialRoute: '/',
-      routes: {'/': (_) => MenuPage(), '/image': (_) => ImageViewerPage()},
+      routerConfig: _router,
     );
   }
 }
 
 class MenuPage extends StatelessWidget {
-  final List<MenuItem> items = [
+  const MenuPage({super.key});
+
+  List<MenuItem> get items => [
     MenuItem(
       title: 'Menu',
       icon: Icon(Icons.menu_book, color: Colors.white),
@@ -48,7 +103,6 @@ class MenuPage extends StatelessWidget {
         menuType: constMenuTypeLoadImage,
         url: 'assets/menu.png', // Replace with actual image path
       ),
-      route: '/image',
     ),
     MenuItem(
       title: 'GrabFood',
@@ -57,7 +111,6 @@ class MenuPage extends StatelessWidget {
         menuType: constMenuTypeRedirectExternalLink,
         url: 'https://r.grab.com/g/6-20250713_164813_C10EF76AD5A04A29861AE106E1DAD9A2_MEXMPS-6-C7AFJCKVT2JYGT', // Replace with actual coordinates or address
       ),
-      route: '/',
     ),
     MenuItem(
       title: 'WhatsApp',
@@ -66,7 +119,6 @@ class MenuPage extends StatelessWidget {
         menuType: constMenuTypeRedirectExternalLink,
         url: 'https://api.whatsapp.com/send?phone=6285946404657', // Replace with actual WhatsApp number
       ),
-      route: '/',
     ),
     MenuItem(
       title: 'Instagram',
@@ -75,9 +127,8 @@ class MenuPage extends StatelessWidget {
         menuType: constMenuTypeRedirectExternalLink,
         url: 'https://www.instagram.com/luma.matcha/',
       ),
-      route: '/',
     ),
-    MenuItem(title: 'Tiktok', icon: Icon(Icons.tiktok, color: Colors.white), route: '/', data: MenuItemData(
+    MenuItem(title: 'Tiktok', icon: Icon(Icons.tiktok, color: Colors.white), data: MenuItemData(
         menuType: constMenuTypeRedirectExternalLink,
         url: 'https://www.tiktok.com/@luma.matcha',
       )),
@@ -88,7 +139,6 @@ class MenuPage extends StatelessWidget {
         menuType: constMenuTypeOpenMap,
         url: 'https://g.co/kgs/dS8aNC7', // Replace with actual coordinates or address
       ),
-      route: '/',
     ),
     // Add more links here if needed
   ];
@@ -139,8 +189,13 @@ class MenuPage extends StatelessWidget {
                         if (await canLaunchUrl(Uri.parse(url))) {
                           await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
                         }
-                      } else {
-                        Navigator.pushNamed(context, item.route, arguments: item);
+                      } else if (item.data?.menuType == constMenuTypeLoadImage) {
+                        // Navigate to image viewer using GoRouter with named route
+                        context.goNamed(
+                          'image',
+                          pathParameters: {'title': item.title.toLowerCase()},
+                          extra: {'menuItem': item},
+                        );
                       }
                     },
                     child: Container(
@@ -181,23 +236,43 @@ class MenuPage extends StatelessWidget {
 }
 
 class ImageViewerPage extends StatelessWidget {
+  final MenuItem? menuItem;
+  final String? title;
+  
+  const ImageViewerPage({super.key, this.menuItem, this.title});
+
   @override
   Widget build(BuildContext context) {
-    final args = ModalRoute.of(context)!.settings.arguments;
-
-    // Safe type-check and cast
-    if (args is! MenuItem) {
+    if (menuItem == null) {
       return Scaffold(
         backgroundColor: constBackgroundColor,
-        appBar: AppBar(title: Text('Error')),
-        body: Center(child: Text('No image selected or wrong arguments')),
+        appBar: AppBar(
+          title: Text(title ?? 'Error'),
+          backgroundColor: constPrimaryColor,
+          foregroundColor: Colors.white,
+        ),
+        body: const Center(child: Text('No image selected')),
       );
     }
 
-    final item = args as MenuItem;
-
     return Scaffold(
-      body: Center(child: Image.asset(item.data?.url ?? 'https://via.placeholder.com/150')),
+      body: Center(
+        child: Image.asset(
+          menuItem!.data?.url ?? 'assets/logo.png',
+          errorBuilder: (context, error, stackTrace) {
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error, size: 64, color: Colors.red),
+                const SizedBox(height: 16),
+                const Text('Could not load image'),
+                const SizedBox(height: 8),
+                Text(menuItem!.data?.url ?? 'No URL'),
+              ],
+            );
+          },
+        ),
+      ),
     );
   }
 }
@@ -205,7 +280,7 @@ class ImageViewerPage extends StatelessWidget {
 class StyledTextContainer extends StatelessWidget {
   final String text;
   
-  const StyledTextContainer({Key? key, required this.text}) : super(key: key);
+  const StyledTextContainer({super.key, required this.text});
   
   @override
   Widget build(BuildContext context) {
