@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 void main() {
   runApp(LumaMatchaApp());
@@ -21,6 +22,7 @@ class MenuItemData {
 
 const constMenuTypeLoadImage = 'image';
 const constMenuTypeRedirectExternalLink = 'redirect-external-link';
+const constMenuTypeOpenMap = 'open-map';
 
 const constBackgroundColor = Color.fromRGBO(254, 255, 250, 1);
 const constPrimaryColor = Color.fromRGBO(69, 99, 48, 1); // Green color
@@ -44,9 +46,27 @@ class MenuPage extends StatelessWidget {
       icon: Icon(Icons.menu_book, color: Colors.white),
       data: MenuItemData(
         menuType: constMenuTypeLoadImage,
-        url: 'https://drive.google.com/file/d/1reRLBc3yqy4PwQiPpYibnOkyh6e0_mOR/view?usp=sharing',
+        url: 'assets/menu.png', // Replace with actual image path
       ),
       route: '/image',
+    ),
+    MenuItem(
+      title: 'GrabFood',
+      icon: Icon(Icons.food_bank, color: Colors.white),
+      data: MenuItemData(
+        menuType: constMenuTypeRedirectExternalLink,
+        url: 'https://r.grab.com/g/6-20250713_164813_C10EF76AD5A04A29861AE106E1DAD9A2_MEXMPS-6-C7AFJCKVT2JYGT', // Replace with actual coordinates or address
+      ),
+      route: '/',
+    ),
+    MenuItem(
+      title: 'WhatsApp',
+      icon: Icon(Icons.chat, color: Colors.white),
+      data: MenuItemData(
+        menuType: constMenuTypeRedirectExternalLink,
+        url: 'https://api.whatsapp.com/send?phone=6285946404657', // Replace with actual WhatsApp number
+      ),
+      route: '/',
     ),
     MenuItem(
       title: 'Instagram',
@@ -54,6 +74,19 @@ class MenuPage extends StatelessWidget {
       data: MenuItemData(
         menuType: constMenuTypeRedirectExternalLink,
         url: 'https://www.instagram.com/luma.matcha/',
+      ),
+      route: '/',
+    ),
+    MenuItem(title: 'Tiktok', icon: Icon(Icons.tiktok, color: Colors.white), route: '/', data: MenuItemData(
+        menuType: constMenuTypeRedirectExternalLink,
+        url: 'https://www.tiktok.com/@luma.matcha',
+      )),
+    MenuItem(
+      title: 'Location',
+      icon: Icon(Icons.location_on, color: Colors.white),
+      data: MenuItemData(
+        menuType: constMenuTypeOpenMap,
+        url: 'https://g.co/kgs/dS8aNC7', // Replace with actual coordinates or address
       ),
       route: '/',
     ),
@@ -67,7 +100,6 @@ class MenuPage extends StatelessWidget {
       appBar: AppBar(backgroundColor: Colors.transparent),
       body: Column(
         children: [
-          SizedBox(height: 32),
           CircleAvatar(
             radius: 48,
             backgroundImage: Image.asset('assets/logo.png').image,
@@ -76,61 +108,17 @@ class MenuPage extends StatelessWidget {
           SizedBox(height: 16),
           Text(
             'Luma Matcha Jogja',
-            style: TextStyle(
+            style: GoogleFonts.crimsonText(
               color: constPrimaryColor,
               fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
           ),
           SizedBox(height: 16),
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              'Your #MatchaToGo at 𝑌𝑜𝑔𝑦𝑎𝑘𝑎𝑟𝑡𝑎',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: constPrimaryColor,
-                fontSize: 16,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ),
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              '𝙊𝙧𝙙𝙚𝙧 𝙗𝙮 𝘿𝙈/𝙒𝙝𝙖𝙩𝙨𝙖𝙥𝙥 𝙖𝙩𝙖𝙪 𝙂𝙧𝙖𝙗𝙛𝙤𝙤𝙙',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: constPrimaryColor,
-                fontSize: 16,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ),
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              '• Selasa - Sabtu 10.00-22.00',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: constPrimaryColor,
-                fontSize: 16,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ),
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              '• Grab buka pukul 12.00-22.00',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: constPrimaryColor,
-                fontSize: 16,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ),
+          StyledTextContainer(text: 'Your #MatchaToGo at 𝑌𝑜𝑔𝑦𝑎𝑘𝑎𝑟𝑡𝑎'),
+          StyledTextContainer(text: '𝙊𝙧𝙙𝙚𝙧 𝙗𝙮 𝘿𝙈/𝙒𝙝𝙖𝙩𝙨𝙖𝙥𝙥 𝙖𝙩𝙖𝙪 𝙂𝙧𝙖𝙗𝙛𝙤𝙤𝙙'),
+          StyledTextContainer(text: '• Selasa - Sabtu 10.00-22.00'),
+          StyledTextContainer(text: '• Grab buka pukul 12.00-22.00'),
           SizedBox(height: 32),
           Expanded(
             child: ListView.separated(
@@ -145,7 +133,8 @@ class MenuPage extends StatelessWidget {
                   child: InkWell(
                     borderRadius: BorderRadius.circular(32),
                     onTap: () async {
-                      if (item.data?.menuType == constMenuTypeRedirectExternalLink) {
+                      if (item.data?.menuType == constMenuTypeRedirectExternalLink ||
+                          item.data?.menuType == constMenuTypeOpenMap) {
                         final url = item.data!.url;
                         if (await canLaunchUrl(Uri.parse(url))) {
                           await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
@@ -208,8 +197,29 @@ class ImageViewerPage extends StatelessWidget {
     final item = args as MenuItem;
 
     return Scaffold(
-      appBar: AppBar(title: Text(item.title)),
-      body: Center(child: Image.network(item.data?.url ?? 'https://via.placeholder.com/150')),
+      body: Center(child: Image.asset(item.data?.url ?? 'https://via.placeholder.com/150')),
+    );
+  }
+}
+
+class StyledTextContainer extends StatelessWidget {
+  final String text;
+  
+  const StyledTextContainer({Key? key, required this.text}) : super(key: key);
+  
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 32),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: constPrimaryColor,
+          fontSize: 16,
+          fontStyle: FontStyle.italic,
+        ),
+      ),
     );
   }
 }

@@ -38,6 +38,7 @@ dependencies:
   flutter_native_splash: ^2.3.10
   flutter_launcher_icons: ^0.13.1
   url_launcher: ^6.3.2
+  google_fonts: ^6.1.0
 
 dev_dependencies:
   flutter_test:
@@ -93,15 +94,21 @@ flutter:
 
 flutter_native_splash:
   color: "#456330"  # background color
-  image: assets/logo.png
+  image: assets/logo_transparent.png
+  image_dark: assets/logo_transparent.png  # same image for dark mode
+  android_12:
+    image: assets/logo_transparent.png
+    color: "#456330"
   android: true
   ios: true
   web: false
-  branding: null
   fullscreen: true
+  # iOS specific settings to prevent logo scaling animation
+  android_gravity: center
 
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/icon.png"  # your logo file
+  image_path: "assets/logo.png"  # your logo file
   min_sdk_android: 21            # optional
+  adaptive_icon_background: "#456330"  # background color for adaptive icons
