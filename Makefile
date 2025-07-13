@@ -23,6 +23,7 @@ help:
 	@echo "$(GREEN)Luma Matcha Flutter Web Deployment$(NC)"
 	@echo ""
 	@echo "$(YELLOW)Available commands:$(NC)"
+	@echo "  make run-web      - Run Flutter web app for testing in localhost:8080"
 	@echo "  make build        - Build Flutter web app for production"
 	@echo "  make deploy       - Deploy to VPS with domain ($(DOMAIN_NAME))"
 	@echo "  make deploy-ip    - Deploy to VPS with IP access only"
@@ -65,6 +66,11 @@ test:
 	@echo "$(YELLOW)Running Flutter tests...$(NC)"
 	@flutter test
 	@echo "$(GREEN)✅ Tests completed$(NC)"
+
+# Run Flutter web
+run-web:
+	@echo "$(YELLOW)Running Flutter web app...$(NC)"
+	@flutter run -d web-server --web-hostname=0.0.0.0 --web-port=8080
 
 # Build Flutter web app
 build: check-deps
