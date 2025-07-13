@@ -16,7 +16,7 @@ YELLOW = \033[1;33m
 RED = \033[0;31m
 NC = \033[0m # No Color
 
-.PHONY: help build clean deploy deploy-ip setup-vps check-deps test analyze
+.PHONY: help build clean deploy deploy-ip setup-vps check-deps test analyze build-android build-ios build-all
 
 # Default target
 help:
@@ -25,6 +25,9 @@ help:
 	@echo "$(YELLOW)Available commands:$(NC)"
 	@echo "  make run-web      - Run Flutter web app for testing in localhost:8080"
 	@echo "  make build        - Build Flutter web app for production"
+	@echo "  make build-android - Build Android APK for release"
+	@echo "  make build-ios    - Build iOS app for release"
+	@echo "  make build-all    - Build web, Android, and iOS"
 	@echo "  make deploy       - Deploy to VPS with domain ($(DOMAIN_NAME))"
 	@echo "  make deploy-ip    - Deploy to VPS with IP access only"
 	@echo "  make setup-vps    - Setup VPS environment (run once)"
@@ -33,6 +36,17 @@ help:
 	@echo "  make analyze      - Analyze Flutter code"
 	@echo "  make check-deps   - Check Flutter dependencies"
 	@echo "  make all          - Build, test, and deploy"
+	@echo ""
+	@echo "$(YELLOW)Mobile Development:$(NC)"
+	@echo "  make run-android  - Run on Android device/emulator"
+	@echo "  make run-ios      - Run on iOS device/simulator"
+	@echo "  make devices      - Show available devices"
+	@echo "  make check-size   - Check app sizes"
+	@echo ""
+	@echo "$(YELLOW)Help Commands:$(NC)"
+	@echo "  make help-build   - Show build commands"
+	@echo "  make help-mobile  - Show mobile development commands"
+	@echo "  make help-deploy  - Show deployment commands"
 	@echo ""
 	@echo "$(YELLOW)Configuration:$(NC)"
 	@echo "  VPS_IP: $(VPS_IP)"
@@ -53,6 +67,7 @@ clean:
 	@flutter clean
 	@rm -f $(ARCHIVE_NAME)
 	@rm -f nginx-config
+	@rm -rf build/
 	@echo "$(GREEN)✅ Clean completed$(NC)"
 
 # Analyze Flutter code
@@ -77,7 +92,45 @@ build: check-deps
 	@echo "$(YELLOW)Building Flutter web app...$(NC)"
 	@flutter pub get
 	@flutter build web --release
-	@echo "$(GREEN)✅ Build completed$(NC)"
+	@echo "$(GREEN)✅ Web build completed$(NC)"
+
+# Build Android APK
+build-android: check-deps
+	@echo "$(YELLOW)Building Android APK...$(NC)"
+	@flutter pub get
+	@flutter build apk --release
+	@echo "$(GREEN)✅ Android APK build completed$(NC)"
+	@echo "$(GREEN)APK location: build/app/outputs/flutter-apk/app-release.apk$(NC)"
+
+# Build Android App Bundle (recommended for Play Store)
+build-appbundle: check-deps
+	@echo "$(YELLOW)Building Android App Bundle...$(NC)"
+	@flutter pub get
+	@flutter build appbundle --release
+	@echo "$(GREEN)✅ Android App Bundle build completed$(NC)"
+	@echo "$(GREEN)AAB location: build/app/outputs/bundle/release/app-release.aab$(NC)"
+
+# Build iOS app
+build-ios: check-deps
+	@echo "$(YELLOW)Building iOS app...$(NC)"
+	@if [ "$$(uname)" != "Darwin" ]; then \
+		echo "$(RED)❌ iOS builds are only supported on macOS$(NC)"; \
+		exit 1; \
+	fi
+	@flutter pub get
+	@flutter build ios --release --no-codesign
+	@echo "$(GREEN)✅ iOS build completed$(NC)"
+	@echo "$(GREEN)iOS app location: build/ios/iphoneos/Runner.app$(NC)"
+	@echo "$(YELLOW)Note: Use Xcode to sign and archive for App Store submission$(NC)"
+
+# Build all platforms
+build-all: build build-android build-appbundle
+	@if [ "$$(uname)" = "Darwin" ]; then \
+		$(MAKE) build-ios; \
+	else \
+		echo "$(YELLOW)Skipping iOS build (macOS required)$(NC)"; \
+	fi
+	@echo "$(GREEN)🎉 All platform builds completed!$(NC)"
 
 # Deploy with domain name
 deploy: build
@@ -165,6 +218,46 @@ dev-serve:
 	@echo "$(YELLOW)Starting development server...$(NC)"
 	@flutter run -d chrome --web-port=8080
 
+# Run on Android device/emulator
+run-android:
+	@echo "$(YELLOW)Running on Android...$(NC)"
+	@flutter run -d android
+
+# Run on iOS device/simulator
+run-ios:
+	@echo "$(YELLOW)Running on iOS...$(NC)"
+	@if [ "$$(uname)" != "Darwin" ]; then \
+		echo "$(RED)❌ iOS development is only supported on macOS$(NC)"; \
+		exit 1; \
+	fi
+	@flutter run -d ios
+
+# Show connected devices
+devices:
+	@echo "$(YELLOW)Available devices:$(NC)"
+	@flutter devices
+
+# Install app on connected Android device
+install-android: build-android
+	@echo "$(YELLOW)Installing APK on Android device...$(NC)"
+	@flutter install --use-application-binary=build/app/outputs/flutter-apk/app-release.apk
+
+# Check app size
+check-size:
+	@echo "$(YELLOW)Checking app sizes...$(NC)"
+	@if [ -f "build/web/main.dart.js" ]; then \
+		echo "$(GREEN)Web app size:$(NC)"; \
+		du -sh build/web/; \
+	fi
+	@if [ -f "build/app/outputs/flutter-apk/app-release.apk" ]; then \
+		echo "$(GREEN)Android APK size:$(NC)"; \
+		ls -lh build/app/outputs/flutter-apk/app-release.apk | awk '{print $$5 " " $$9}'; \
+	fi
+	@if [ -f "build/app/outputs/bundle/release/app-release.aab" ]; then \
+		echo "$(GREEN)Android App Bundle size:$(NC)"; \
+		ls -lh build/app/outputs/bundle/release/app-release.aab | awk '{print $$5 " " $$9}'; \
+	fi
+
 # Update dependencies
 update-deps:
 	@echo "$(YELLOW)Updating Flutter dependencies...$(NC)"
@@ -201,3 +294,20 @@ help-maintenance:
 	@echo "  make logs       - View Nginx logs"
 	@echo "  make restart    - Restart services"
 	@echo "  make backup     - Backup current deployment"
+
+help-build:
+	@echo "$(GREEN)Build Commands:$(NC)"
+	@echo "  make build           - Build web app"
+	@echo "  make build-android   - Build Android APK"
+	@echo "  make build-appbundle - Build Android App Bundle (for Play Store)"
+	@echo "  make build-ios       - Build iOS app (macOS only)"
+	@echo "  make build-all       - Build all platforms"
+	@echo "  make check-size      - Check built app sizes"
+
+help-mobile:
+	@echo "$(GREEN)Mobile Development Commands:$(NC)"
+	@echo "  make run-android     - Run on Android device/emulator"
+	@echo "  make run-ios         - Run on iOS device/simulator (macOS only)"
+	@echo "  make install-android - Install APK on connected Android device"
+	@echo "  make devices         - Show available devices"
+	@echo "  make check-size      - Check app sizes"
