@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
+import 'screens/privacy_policy_page.dart';
+
 
 void main() {
   runApp(const LumaMatchaApp());
@@ -34,7 +36,7 @@ const constPrimaryColor = Color.fromRGBO(69, 99, 48, 1); // Green color
 // GoRouter configuration
 final GoRouter _router = GoRouter(
   initialLocation: '/',
-  debugLogDiagnostics: true,
+  debugLogDiagnostics: false, // Disable debug logging for production
   routes: [
     GoRoute(
       path: '/',
@@ -52,6 +54,11 @@ final GoRouter _router = GoRouter(
           title: title,
         );
       },
+    ),
+    GoRoute(
+      path: '/privacy-policy',
+      name: 'privacy-policy',
+      builder: (context, state) => const PrivacyPolicyPage(),
     ),
   ],
   errorBuilder: (context, state) => Scaffold(
