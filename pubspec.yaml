@@ -37,6 +37,7 @@ dependencies:
   syncfusion_flutter_pdfviewer: ^30.1.39
   flutter_native_splash: ^2.3.10
   flutter_launcher_icons: ^0.13.1
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

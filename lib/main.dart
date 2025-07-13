@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 void main() {
   runApp(LumaMatchaApp());
@@ -6,13 +7,23 @@ void main() {
 
 class MenuItem {
   final String title;
-  final String imageUrl;
+  final Icon icon;
   final String route;
-  MenuItem({required this.title, required this.imageUrl, required this.route});
+  final MenuItemData? data;
+  MenuItem({required this.title, required this.icon, required this.route, required this.data});
 }
 
-final backgroundColor = Color.fromRGBO(254, 255, 250, 1);
-final primaryColor = Color.fromRGBO(69, 99, 48, 1); // Green color
+class MenuItemData {
+  final String menuType;
+  final String url;
+  MenuItemData({required this.menuType, required this.url});
+}
+
+const constMenuTypeLoadImage = 'image';
+const constMenuTypeRedirectExternalLink = 'redirect-external-link';
+
+const constBackgroundColor = Color.fromRGBO(254, 255, 250, 1);
+const constPrimaryColor = Color.fromRGBO(69, 99, 48, 1); // Green color
 
 class LumaMatchaApp extends StatelessWidget {
   @override
@@ -30,9 +41,21 @@ class MenuPage extends StatelessWidget {
   final List<MenuItem> items = [
     MenuItem(
       title: 'Menu',
-      imageUrl:
-          'https://drive.google.com/uc?export=view&id=1reRLBc3yqy4PwQiPpYibnOkyh6e0_mOR',
+      icon: Icon(Icons.menu_book, color: Colors.white),
+      data: MenuItemData(
+        menuType: constMenuTypeLoadImage,
+        url: 'https://drive.google.com/file/d/1reRLBc3yqy4PwQiPpYibnOkyh6e0_mOR/view?usp=sharing',
+      ),
       route: '/image',
+    ),
+    MenuItem(
+      title: 'Instagram',
+      icon: Icon(Icons.camera_alt, color: Colors.white),
+      data: MenuItemData(
+        menuType: constMenuTypeRedirectExternalLink,
+        url: 'https://www.instagram.com/luma.matcha/',
+      ),
+      route: '/',
     ),
     // Add more links here if needed
   ];
@@ -40,7 +63,7 @@ class MenuPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: constBackgroundColor,
       appBar: AppBar(backgroundColor: Colors.transparent),
       body: Column(
         children: [
@@ -54,7 +77,7 @@ class MenuPage extends StatelessWidget {
           Text(
             'Luma Matcha Jogja',
             style: TextStyle(
-              color: primaryColor,
+              color: constPrimaryColor,
               fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
@@ -66,7 +89,7 @@ class MenuPage extends StatelessWidget {
               'Your #MatchaToGo at 𝑌𝑜𝑔𝑦𝑎𝑘𝑎𝑟𝑡𝑎',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: primaryColor,
+                color: constPrimaryColor,
                 fontSize: 16,
                 fontStyle: FontStyle.italic,
               ),
@@ -78,7 +101,7 @@ class MenuPage extends StatelessWidget {
               '𝙊𝙧𝙙𝙚𝙧 𝙗𝙮 𝘿𝙈/𝙒𝙝𝙖𝙩𝙨𝙖𝙥𝙥 𝙖𝙩𝙖𝙪 𝙂𝙧𝙖𝙗𝙛𝙤𝙤𝙙',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: primaryColor,
+                color: constPrimaryColor,
                 fontSize: 16,
                 fontStyle: FontStyle.italic,
               ),
@@ -90,7 +113,7 @@ class MenuPage extends StatelessWidget {
               '• Selasa - Sabtu 10.00-22.00',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: primaryColor,
+                color: constPrimaryColor,
                 fontSize: 16,
                 fontStyle: FontStyle.italic,
               ),
@@ -102,58 +125,65 @@ class MenuPage extends StatelessWidget {
               '• Grab buka pukul 12.00-22.00',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: primaryColor,
+                color: constPrimaryColor,
                 fontSize: 16,
                 fontStyle: FontStyle.italic,
               ),
             ),
           ),
           SizedBox(height: 32),
-            Expanded(
+          Expanded(
             child: ListView.separated(
               padding: EdgeInsets.symmetric(horizontal: 24),
               itemCount: items.length,
               separatorBuilder: (_, __) => SizedBox(height: 16),
               itemBuilder: (context, index) {
-              final item = items[index];
-              return Material(
-                color: Colors.green[400],
-                borderRadius: BorderRadius.circular(32),
-                child: InkWell(
-                borderRadius: BorderRadius.circular(32),
-                onTap: () {
-                  Navigator.pushNamed(context, item.route, arguments: item);
-                },
-                child: Container(
-                  padding: EdgeInsets.symmetric(
-                  vertical: 18,
-                  horizontal: 24,
-                  ),
-                  alignment: Alignment.center,
-                  child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.menu_book, color: Colors.white), // Add your desired icon here
-                    SizedBox(width: 8),
-                    Text(
-                    item.title,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.1,
+                final item = items[index];
+                return Material(
+                  color: Colors.green[400],
+                  borderRadius: BorderRadius.circular(32),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(32),
+                    onTap: () async {
+                      if (item.data?.menuType == constMenuTypeRedirectExternalLink) {
+                        final url = item.data!.url;
+                        if (await canLaunchUrl(Uri.parse(url))) {
+                          await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                        }
+                      } else {
+                        Navigator.pushNamed(context, item.route, arguments: item);
+                      }
+                    },
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        vertical: 18,
+                        horizontal: 24,
+                      ),
+                      alignment: Alignment.center,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          item.icon,
+                          SizedBox(width: 8),
+                          Text(
+                            item.title,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.1,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Icon(Icons.chevron_right, color: Colors.white),
+                        ],
+                      ),
                     ),
-                    ),
-                    SizedBox(width: 8),
-                    Icon(Icons.chevron_right, color: Colors.white),
-                  ],
                   ),
-                ),
-                ),
-              );
+                );
               },
             ),
-            ),
+          ),
           SizedBox(height: 32),
         ],
       ),
@@ -169,7 +199,7 @@ class ImageViewerPage extends StatelessWidget {
     // Safe type-check and cast
     if (args is! MenuItem) {
       return Scaffold(
-        backgroundColor: backgroundColor,
+        backgroundColor: constBackgroundColor,
         appBar: AppBar(title: Text('Error')),
         body: Center(child: Text('No image selected or wrong arguments')),
       );
@@ -179,7 +209,7 @@ class ImageViewerPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: Text(item.title)),
-      body: Center(child: Image.network(item.imageUrl)),
+      body: Center(child: Image.network(item.data?.url ?? 'https://via.placeholder.com/150')),
     );
   }
 }
