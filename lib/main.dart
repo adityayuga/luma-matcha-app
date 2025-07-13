@@ -92,7 +92,7 @@ class LumaMatchaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'Luma Matcha Jogja',
+      title: 'Luma Matcha',
       theme: ThemeData(primarySwatch: Colors.green),
       routerConfig: _router,
     );
