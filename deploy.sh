@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Luma Matcha Flutter Web Deployment Script
-# Usage: ./deploy.sh [VPS_IP] [VPS_USER] [DOMAIN_NAME(optional)]
+# Fixed Flutter Web Deployment Script for Luma Matcha
+# Fixes "Importing a module script failed" error
 
 set -e
 
@@ -11,171 +11,121 @@ DOMAIN_NAME=$3
 
 if [ -z "$VPS_IP" ] || [ -z "$VPS_USER" ]; then
     echo "Usage: ./deploy.sh [VPS_IP] [VPS_USER] [DOMAIN_NAME(optional)]"
-    echo "Example: ./deploy.sh 192.168.1.100 ubuntu luma-matcha.com"
+    echo "Example: ./deploy.sh 192.168.1.100 ubuntu lumamatcha.com"
     exit 1
 fi
 
-echo "🚀 Starting deployment to $VPS_IP..."
+echo "🚀 Starting fixed deployment to $VPS_IP..."
 
-# Build Flutter web app
-echo "📦 Building Flutter web app..."
-flutter build web --release
+# Clean previous builds
+echo "🧹 Cleaning previous builds..."
+flutter clean
+flutter pub get
+
+# Build Flutter web app with proper settings
+echo "📦 Building Flutter web app with production settings..."
+flutter build web \
+    --release \
+    --base-href="/" \
+    --pwa-strategy=offline-first
+
+# Verify build files exist
+if [ ! -f "build/web/main.dart.js" ]; then
+    echo "❌ Build failed - main.dart.js not found"
+    exit 1
+fi
+
+echo "✅ Build successful - main.dart.js size: $(wc -c < build/web/main.dart.js) bytes"
 
 # Create deployment archive
 echo "📁 Creating deployment archive..."
 tar -czf luma-matcha-web.tar.gz build/web/
 
-# Upload to VPS
+# Upload files to VPS
 echo "⬆️ Uploading to VPS..."
 scp luma-matcha-web.tar.gz $VPS_USER@$VPS_IP:~/
+scp nginx-flutter.conf $VPS_USER@$VPS_IP:~/
 
 # Execute deployment commands on VPS
-echo "⚙️ Setting up on VPS..."
+echo "⚙️ Setting up on VPS with configuration..."
 ssh $VPS_USER@$VPS_IP << EOF
+    # Backup existing site if it exists
+    if [ -d "/var/www/luma-matcha" ]; then
+        sudo cp -r /var/www/luma-matcha /var/www/luma-matcha-backup-\$(date +%Y%m%d_%H%M%S)
+    fi
+    
     # Create web directory
     sudo mkdir -p /var/www/luma-matcha
     
     # Extract files
     sudo tar -xzf ~/luma-matcha-web.tar.gz --strip-components=2 -C /var/www/luma-matcha/
     
-    # Set permissions
+    # Set proper permissions
     sudo chown -R www-data:www-data /var/www/luma-matcha
     sudo chmod -R 755 /var/www/luma-matcha
     
-    # Clean up
-    rm ~/luma-matcha-web.tar.gz
+    # Verify critical files exist
+    if [ ! -f "/var/www/luma-matcha/main.dart.js" ]; then
+        echo "❌ Critical file main.dart.js missing after extraction"
+        exit 1
+    fi
     
-    echo "✅ Files deployed successfully!"
-EOF
-
-# Generate Nginx config based on whether domain is provided
-if [ -n "$DOMAIN_NAME" ]; then
-    echo "🔧 Creating Nginx config for domain: $DOMAIN_NAME"
-    cat > nginx-config << EOL
-server {
-    listen 80;
-    server_name $DOMAIN_NAME www.$DOMAIN_NAME;
+    echo "✅ Files deployed - main.dart.js size: \$(wc -c < /var/www/luma-matcha/main.dart.js) bytes"
     
-    root /var/www/luma-matcha;
-    index index.html;
-    
-    # Enable gzip compression
-    gzip on;
-    gzip_vary on;
-    gzip_min_length 1024;
-    gzip_proxied expired no-cache no-store private auth;
-    gzip_types text/plain text/css text/xml text/javascript application/javascript application/xml+rss;
-    
-    location / {
-        try_files \$uri \$uri/ /index.html;
-        
-        # Add security headers
-        add_header X-Frame-Options "SAMEORIGIN" always;
-        add_header X-XSS-Protection "1; mode=block" always;
-        add_header X-Content-Type-Options "nosniff" always;
-        add_header Referrer-Policy "no-referrer-when-downgrade" always;
-        add_header Content-Security-Policy "default-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' http: https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'; object-src 'none';" always;
-    }
-    
-    # Cache static assets
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-    
-    # Handle Flutter service worker
-    location /flutter_service_worker.js {
-        add_header Cache-Control "no-cache";
-        expires 0;
-    }
-}
-EOL
-else
-    echo "🔧 Creating Nginx config for IP-based access"
-    cat > nginx-config << EOL
-server {
-    listen 80 default_server;
-    server_name _;
-    
-    root /var/www/luma-matcha;
-    index index.html;
-    
-    # Enable gzip compression
-    gzip on;
-    gzip_vary on;
-    gzip_min_length 1024;
-    gzip_proxied expired no-cache no-store private auth;
-    gzip_types text/plain text/css text/xml text/javascript application/javascript application/xml+rss;
-    
-    location / {
-        try_files \$uri \$uri/ /index.html;
-        
-        # Add security headers for Flutter web
-        add_header X-Frame-Options "SAMEORIGIN" always;
-        add_header X-XSS-Protection "1; mode=block" always;
-        add_header X-Content-Type-Options "nosniff" always;
-        add_header Referrer-Policy "no-referrer-when-downgrade" always;
-        add_header Content-Security-Policy "default-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' http: https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'; object-src 'none';" always;
-    }
-    
-    # Cache static assets
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-    
-    # Handle Flutter service worker
-    location /flutter_service_worker.js {
-        add_header Cache-Control "no-cache";
-        expires 0;
-    }
-}
-EOL
-fi
-
-# Upload and configure Nginx
-scp nginx-config $VPS_USER@$VPS_IP:~/
-ssh $VPS_USER@$VPS_IP << EOF
     # Install Nginx if not installed
     sudo apt update
     sudo apt install nginx -y
     
-    # Configure Nginx
-    sudo mv ~/nginx-config /etc/nginx/sites-available/luma-matcha
+    # Configure Nginx with Flutter-specific settings
+    sudo mv ~/nginx-flutter.conf /etc/nginx/sites-available/luma-matcha
     sudo ln -sf /etc/nginx/sites-available/luma-matcha /etc/nginx/sites-enabled/
     
     # Remove default site
     sudo rm -f /etc/nginx/sites-enabled/default
     
-    # Test and reload Nginx
+    # Test Nginx configuration
     sudo nginx -t
-    sudo systemctl restart nginx
-    sudo systemctl enable nginx
     
-    # Configure firewall
-    sudo ufw allow 'Nginx Full' 2>/dev/null || true
+    if [ \$? -eq 0 ]; then
+        # Reload Nginx
+        sudo systemctl reload nginx
+        sudo systemctl enable nginx
+        echo "✅ Nginx configuration updated and reloaded"
+    else
+        echo "❌ Nginx configuration test failed"
+        exit 1
+    fi
     
-    echo "✅ Nginx configured successfully!"
+    # Clean up
+    rm ~/luma-matcha-web.tar.gz
+    
+    echo "✅ Deployment completed successfully!"
+    echo "📝 Next steps:"
+    echo "   1. Update your Cloudflare SSL/TLS mode to 'Full (strict)'"
+    echo "   2. Ensure your domain DNS points to this server"
+    echo "   3. Set up SSL certificate if needed: sudo certbot --nginx -d $DOMAIN_NAME"
+    echo "   4. Test the site: https://$DOMAIN_NAME"
 EOF
 
 # Clean up local files
-rm nginx-config
 rm luma-matcha-web.tar.gz
 
 echo ""
-echo "🎉 Deployment completed successfully!"
+echo "🎉 Deployment script completed!"
 echo ""
+echo "🔧 Common fixes applied:"
+echo "   ✅ Fixed MIME types for .js and .wasm files"
+echo "   ✅ Added proper Cross-Origin headers"
+echo "   ✅ Fixed Content Security Policy for Flutter web"
+echo "   ✅ Added proper caching rules"
+echo "   ✅ Fixed base href in index.html"
+echo ""
+echo "🌐 Your site should now be accessible at:"
 if [ -n "$DOMAIN_NAME" ]; then
-    echo "🌐 Your app is available at:"
-    echo "   http://$DOMAIN_NAME"
-    echo "   http://www.$DOMAIN_NAME"
-    echo ""
-    echo "🔒 To enable HTTPS, run on your VPS:"
-    echo "   sudo apt install certbot python3-certbot-nginx -y"
-    echo "   sudo certbot --nginx -d $DOMAIN_NAME -d www.$DOMAIN_NAME"
+    echo "   https://$DOMAIN_NAME"
 else
-    echo "🌐 Your app is available at:"
     echo "   http://$VPS_IP"
 fi
 echo ""
-echo "📚 For detailed instructions, see DEPLOYMENT_GUIDE.md"
+echo "🐛 If you still see issues, check browser console and nginx logs:"
+echo "   sudo tail -f /var/log/nginx/error.log"

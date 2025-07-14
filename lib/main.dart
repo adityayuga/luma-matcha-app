@@ -135,7 +135,7 @@ class MenuPage extends StatelessWidget {
         url: 'https://www.instagram.com/luma.matcha/',
       ),
     ),
-    MenuItem(title: 'Tiktok', icon: Icon(Icons.tiktok, color: Colors.white), data: MenuItemData(
+    MenuItem(title: 'Tiktok', icon: Icon(Icons.video_library, color: Colors.white), data: MenuItemData(
         menuType: constMenuTypeRedirectExternalLink,
         url: 'https://www.tiktok.com/@luma.matcha',
       )),
@@ -176,65 +176,70 @@ class MenuPage extends StatelessWidget {
           StyledTextContainer(text: '𝙊𝙧𝙙𝙚𝙧 𝙗𝙮 𝘿𝙈/𝙒𝙝𝙖𝙩𝙨𝙖𝙥𝙥 𝙖𝙩𝙖𝙪 𝙂𝙧𝙖𝙗𝙛𝙤𝙤𝙙'),
           StyledTextContainer(text: '• Selasa - Sabtu 10.00-22.00'),
           StyledTextContainer(text: '• Grab buka pukul 12.00-22.00'),
-          SizedBox(height: 32),
-          Expanded(
+            SizedBox(height: 32),
+            Expanded(
             child: ListView.separated(
               padding: EdgeInsets.symmetric(horizontal: 24),
               itemCount: items.length,
               separatorBuilder: (_, __) => SizedBox(height: 16),
               itemBuilder: (context, index) {
-                final item = items[index];
-                return Material(
+              final item = items[index];
+              return Center(
+                child: Container(
+                constraints: BoxConstraints(maxWidth: 420), // Limit menu width
+                margin: EdgeInsets.symmetric(horizontal: 8), // Reduce margin
+                child: Material(
                   color: Colors.green[400],
                   borderRadius: BorderRadius.circular(32),
                   child: InkWell(
-                    borderRadius: BorderRadius.circular(32),
-                    onTap: () async {
-                      if (item.data?.menuType == constMenuTypeRedirectExternalLink ||
-                          item.data?.menuType == constMenuTypeOpenMap) {
-                        final url = item.data!.url;
-                        if (await canLaunchUrl(Uri.parse(url))) {
-                          await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-                        }
-                      } else if (item.data?.menuType == constMenuTypeLoadImage) {
-                        // Navigate to image viewer using GoRouter with named route
-                        context.goNamed(
-                          'image',
-                          pathParameters: {'title': item.title.toLowerCase()},
-                          extra: {'menuItem': item},
-                        );
-                      }
-                    },
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        vertical: 18,
-                        horizontal: 24,
+                  borderRadius: BorderRadius.circular(32),
+                  onTap: () async {
+                    if (item.data?.menuType == constMenuTypeRedirectExternalLink ||
+                      item.data?.menuType == constMenuTypeOpenMap) {
+                    final url = item.data!.url;
+                    if (await canLaunchUrl(Uri.parse(url))) {
+                      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                    }
+                    } else if (item.data?.menuType == constMenuTypeLoadImage) {
+                    context.goNamed(
+                      'image',
+                      pathParameters: {'title': item.title.toLowerCase()},
+                      extra: {'menuItem': item},
+                    );
+                    }
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                    vertical: 18,
+                    horizontal: 24,
+                    ),
+                    alignment: Alignment.center,
+                    child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      item.icon,
+                      SizedBox(width: 8),
+                      Text(
+                      item.title,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.1,
                       ),
-                      alignment: Alignment.center,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          item.icon,
-                          SizedBox(width: 8),
-                          Text(
-                            item.title,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.1,
-                            ),
-                          ),
-                          SizedBox(width: 8),
-                          Icon(Icons.chevron_right, color: Colors.white),
-                        ],
                       ),
+                      SizedBox(width: 8),
+                      Icon(Icons.chevron_right, color: Colors.white),
+                    ],
                     ),
                   ),
-                );
+                  ),
+                ),
+                ),
+              );
               },
             ),
-          ),
+            ),
           SizedBox(height: 32),
         ],
       ),
