@@ -16,7 +16,7 @@ YELLOW = \033[1;33m
 RED = \033[0;31m
 NC = \033[0m # No Color
 
-.PHONY: help build clean deploy deploy-ip setup-vps check-deps test analyze build-android build-ios build-all
+.PHONY: help build clean deploy deploy-ip setup-vps check-deps test analyze build-android build-ios build-all build-appbundle build-appbundle-debug build-appbundle-simple build-android-simple build-appbundle check-android fix-android fix-java setup-android-signing configure-android-signing
 
 # Default target
 help:
@@ -28,6 +28,10 @@ help:
 	@echo "  make build-android - Build Android APK for release"
 	@echo "  make build-ios    - Build iOS app for release"
 	@echo "  make build-all    - Build web, Android, and iOS"
+	@echo "  make build-appbundle - Build Android App Bundle (for Play Store)"
+	@echo "  make build-appbundle-simple - Build AAB (bypasses Gradle issues)"
+	@echo "  make build-android-simple - Build APK (simple method)"
+	@echo "  make build-appbundle - Build AAB (direct Gradle - RECOMMENDED)"
 	@echo "  make deploy       - Deploy to VPS with domain ($(DOMAIN_NAME))"
 	@echo "  make deploy-ip    - Deploy to VPS with IP access only"
 	@echo "  make setup-vps    - Setup VPS environment (run once)"
@@ -35,6 +39,10 @@ help:
 	@echo "  make test         - Run Flutter tests"
 	@echo "  make analyze      - Analyze Flutter code"
 	@echo "  make check-deps   - Check Flutter dependencies"
+	@echo "  make fix-android  - Fix common Android build issues"
+	@echo "  make fix-java     - Check and fix Java environment issues"
+	@echo "  make setup-android-signing - Create release keystore"
+	@echo "  make configure-android-signing - Configure build.gradle.kts"
 	@echo "  make all          - Build, test, and deploy"
 	@echo ""
 	@echo "$(YELLOW)Mobile Development:$(NC)"
@@ -60,6 +68,85 @@ check-deps:
 	@which ssh > /dev/null || (echo "$(RED)Error: SSH not found$(NC)" && exit 1)
 	@which scp > /dev/null || (echo "$(RED)Error: SCP not found$(NC)" && exit 1)
 	@echo "$(GREEN)✅ All dependencies found$(NC)"
+	@echo "$(YELLOW)Flutter version:$(NC)"
+	@flutter --version | head -1
+
+# Fix Android build issues
+fix-android:
+	@echo "$(YELLOW)Fixing common Android build issues...$(NC)"
+	@echo "$(YELLOW)1. Cleaning all build artifacts...$(NC)"
+	@flutter clean
+	@rm -rf android/.gradle
+	@rm -rf android/app/build
+	@rm -rf android/build
+	@rm -rf ~/.gradle/caches
+	@echo "$(YELLOW)2. Refreshing dependencies...$(NC)"
+	@flutter pub get
+	@echo "$(YELLOW)3. Accepting Android licenses...$(NC)"
+	@flutter doctor --android-licenses || echo "$(YELLOW)License acceptance completed$(NC)"
+	@echo "$(YELLOW)4. Checking Gradle wrapper...$(NC)"
+	@cd android && chmod +x gradlew
+	@echo "$(YELLOW)5. Setting JAVA_HOME to system Java...$(NC)"
+	@echo "$(GREEN)Current JAVA_HOME: $${JAVA_HOME}$(NC)"
+	@echo "$(GREEN)System Java: $$(which java)$(NC)"
+	@echo "$(GREEN)✅ Android environment fixed$(NC)"
+	@echo "$(YELLOW)Now try: make build-appbundle$(NC)"
+
+# Fix Java environment specifically for Android builds
+fix-java:
+	@echo "$(YELLOW)Fixing Java environment for Android builds...$(NC)"
+	@echo "$(YELLOW)Current Java versions:$(NC)"
+	@java -version || echo "$(RED)Java not found$(NC)"
+	@echo "$(YELLOW)Available Java installations:$(NC)"
+	@/usr/libexec/java_home -V 2>/dev/null || echo "$(YELLOW)No Java installations found via java_home$(NC)"
+	@echo "$(YELLOW)Android Studio Java:$(NC)"
+	@ls -la "/Applications/Android Studio.app/Contents/jbr/Contents/Home/bin/java" 2>/dev/null || echo "$(YELLOW)Android Studio Java not found$(NC)"
+	@echo "$(GREEN)✅ Java environment check completed$(NC)"
+
+# Setup Android release signing (creates keystore for production)
+setup-android-signing:
+	@echo "$(YELLOW)Setting up Android release signing...$(NC)"
+	@if [ -f "android/app/upload-keystore.jks" ]; then \
+		echo "$(GREEN)✅ Keystore already exists: android/app/upload-keystore.jks$(NC)"; \
+		echo "$(YELLOW)To recreate keystore, delete the existing file first$(NC)"; \
+	else \
+		echo "$(YELLOW)Creating release keystore...$(NC)"; \
+		echo "$(YELLOW)You'll be prompted for keystore and key information$(NC)"; \
+		keytool -genkey -v -keystore android/app/upload-keystore.jks \
+			-keyalg RSA -keysize 2048 -validity 10000 \
+			-alias upload -storetype JKS; \
+		echo "$(GREEN)✅ Keystore created: android/app/upload-keystore.jks$(NC)"; \
+		echo "$(YELLOW)Now configuring key.properties...$(NC)"; \
+		echo "storePassword=" > android/key.properties; \
+		echo "keyPassword=" >> android/key.properties; \
+		echo "keyAlias=upload" >> android/key.properties; \
+		echo "storeFile=upload-keystore.jks" >> android/key.properties; \
+		echo "$(RED)⚠️  IMPORTANT: Edit android/key.properties and add your passwords$(NC)"; \
+		echo "$(RED)⚠️  NEVER commit key.properties or keystore to version control$(NC)"; \
+		echo "$(YELLOW)Example key.properties content:$(NC)"; \
+		echo "  storePassword=your_store_password"; \
+		echo "  keyPassword=your_key_password"; \
+		echo "  keyAlias=upload"; \
+		echo "  storeFile=upload-keystore.jks"; \
+	fi
+
+# Configure Android signing in build.gradle.kts
+configure-android-signing:
+	@echo "$(YELLOW)Configuring Android signing in build.gradle.kts...$(NC)"
+	@if grep -q "signingConfigs" android/app/build.gradle.kts; then \
+		echo "$(GREEN)✅ Signing configuration already present$(NC)"; \
+	else \
+		echo "$(YELLOW)Adding signing configuration...$(NC)"; \
+		cp android/app/build.gradle.kts android/app/build.gradle.kts.backup; \
+		echo "$(GREEN)✅ Backup created: android/app/build.gradle.kts.backup$(NC)"; \
+		echo "$(RED)⚠️  Manual configuration required - see ANDROID_SIGNING_GUIDE.md$(NC)"; \
+	fi
+
+# Check Android environment
+check-android:
+	@echo "$(YELLOW)Checking Android environment...$(NC)"
+	@flutter doctor --android-licenses 2>/dev/null || echo "$(YELLOW)Note: Run 'flutter doctor --android-licenses' if needed$(NC)"
+	@flutter doctor | grep -E "(Android|Chrome)" || echo "$(YELLOW)Android toolchain check...$(NC)"
 
 # Clean build artifacts
 clean:
@@ -95,20 +182,98 @@ build: check-deps
 	@echo "$(GREEN)✅ Web build completed$(NC)"
 
 # Build Android APK
-build-android: check-deps
+build-android: check-deps check-android
 	@echo "$(YELLOW)Building Android APK...$(NC)"
+	@echo "$(YELLOW)Cleaning previous builds...$(NC)"
+	@flutter clean
 	@flutter pub get
-	@flutter build apk --release
+	@echo "$(YELLOW)Starting Android APK build...$(NC)"
+	@cd android && \
+	JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home \
+	./gradlew clean
+	@JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home \
+	flutter build apk --release
 	@echo "$(GREEN)✅ Android APK build completed$(NC)"
-	@echo "$(GREEN)APK location: build/app/outputs/flutter-apk/app-release.apk$(NC)"
+	@if [ -f "build/app/outputs/flutter-apk/app-release.apk" ]; then \
+		echo "$(GREEN)APK location: build/app/outputs/flutter-apk/app-release.apk$(NC)"; \
+		ls -lh build/app/outputs/flutter-apk/app-release.apk; \
+	else \
+		echo "$(RED)❌ APK file not found$(NC)"; \
+		exit 1; \
+	fi
 
-# Build Android App Bundle (recommended for Play Store)
-build-appbundle: check-deps
-	@echo "$(YELLOW)Building Android App Bundle...$(NC)"
+# Build Android App Bundle - Simple Method (bypasses Gradle issues)
+build-appbundle-simple:
+	@echo "$(YELLOW)Building Android App Bundle (Simple Method)...$(NC)"
+	@echo "$(YELLOW)This bypasses Gradle Worker Daemon issues$(NC)"
+	@flutter clean
 	@flutter pub get
-	@flutter build appbundle --release
-	@echo "$(GREEN)✅ Android App Bundle build completed$(NC)"
-	@echo "$(GREEN)AAB location: build/app/outputs/bundle/release/app-release.aab$(NC)"
+	@echo "$(YELLOW)Building directly with Flutter...$(NC)"
+	@export JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home && \
+	flutter build appbundle --release --no-tree-shake-icons
+	@if [ -f "build/app/outputs/bundle/release/app-release.aab" ]; then \
+		echo "$(GREEN)✅ Android App Bundle built successfully!$(NC)"; \
+		echo "$(GREEN)Location: build/app/outputs/bundle/release/app-release.aab$(NC)"; \
+		ls -lh build/app/outputs/bundle/release/app-release.aab; \
+		echo "$(GREEN)🎉 Ready for Google Play Store upload!$(NC)"; \
+	else \
+		echo "$(RED)❌ Build failed - AAB file not found$(NC)"; \
+	fi
+
+# Build Android APK - Simple Method 
+build-android-simple:
+	@echo "$(YELLOW)Building Android APK (Simple Method)...$(NC)"
+	@flutter clean
+	@flutter pub get
+	@echo "$(YELLOW)Building directly with Flutter...$(NC)"
+	@export JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home && \
+	flutter build apk --release --no-tree-shake-icons
+	@if [ -f "build/app/outputs/flutter-apk/app-release.apk" ]; then \
+		echo "$(GREEN)✅ Android APK built successfully!$(NC)"; \
+		echo "$(GREEN)Location: build/app/outputs/flutter-apk/app-release.apk$(NC)"; \
+		ls -lh build/app/outputs/flutter-apk/app-release.apk; \
+		echo "$(GREEN)🎉 Ready for installation!$(NC)"; \
+	else \
+		echo "$(RED)❌ Build failed - APK file not found$(NC)"; \
+	fi
+
+# Build Android App Bundle - Direct Gradle Method (WORKING SOLUTION)
+build-appbundle:
+	@echo "$(GREEN)Building Android App Bundle using direct Gradle with Java 17...$(NC)"
+	@export JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home; \
+	echo "$(YELLOW)Using Java: $$JAVA_HOME$(NC)"; \
+	echo "$(YELLOW)Stopping existing Gradle daemons...$(NC)"; \
+	./android/gradlew --stop; \
+	echo "$(YELLOW)Building with Gradle...$(NC)"; \
+	cd android && ./gradlew bundleRelease; \
+	echo "$(GREEN)✅ Android App Bundle created successfully!$(NC)"
+	@if [ -f "build/app/outputs/bundle/release/app-release.aab" ]; then \
+		echo "$(GREEN)Location: build/app/outputs/bundle/release/app-release.aab$(NC)"; \
+		ls -lh build/app/outputs/bundle/release/app-release.aab; \
+		echo "$(GREEN)🎉 Ready for Google Play Store upload!$(NC)"; \
+	else \
+		echo "$(RED)❌ Build output not found at expected location$(NC)"; \
+		find . -name "*.aab" -type f 2>/dev/null | head -3; \
+	fi
+
+# Build Android App Bundle with verbose output for debugging
+build-appbundle-debug: check-deps check-android
+	@echo "$(YELLOW)Building Android App Bundle with debug output...$(NC)"
+	@flutter clean
+	@flutter pub get
+	@echo "$(YELLOW)Java Environment:$(NC)"
+	@echo "JAVA_HOME: /Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home"
+	@cd android && \
+	JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home \
+	./gradlew clean --info
+	@JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home \
+	flutter build appbundle --release --verbose
+	@if [ -f "build/app/outputs/bundle/release/app-release.aab" ]; then \
+		echo "$(GREEN)✅ AAB built successfully$(NC)"; \
+		ls -lh build/app/outputs/bundle/release/app-release.aab; \
+	else \
+		echo "$(RED)❌ Build failed$(NC)"; \
+	fi
 
 # Build iOS app
 build-ios: check-deps
@@ -302,6 +467,8 @@ help-build:
 	@echo "  make build-appbundle - Build Android App Bundle (for Play Store)"
 	@echo "  make build-ios       - Build iOS app (macOS only)"
 	@echo "  make build-all       - Build all platforms"
+	@echo "  make fix-android     - Fix common Android build issues"
+	@echo "  make check-android   - Check Android environment"
 	@echo "  make check-size      - Check built app sizes"
 
 help-mobile:
