@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Fixed Flutter Web Deployment Script for Luma Matcha
+# Flutter Web Deployment Script for Luma Matcha
 # Fixes "Importing a module script failed" error
 
 set -e
@@ -8,14 +8,26 @@ set -e
 VPS_IP=$1
 VPS_USER=$2
 DOMAIN_NAME=$3
+FORCE_OVERWRITE=""
+
+# Parse additional arguments
+for arg in "$@"; do
+    case $arg in
+        --force-nginx)
+            FORCE_OVERWRITE="--force-nginx"
+            shift
+            ;;
+    esac
+done
 
 if [ -z "$VPS_IP" ] || [ -z "$VPS_USER" ]; then
-    echo "Usage: ./deploy.sh [VPS_IP] [VPS_USER] [DOMAIN_NAME(optional)]"
+    echo "Usage: ./deploy.sh [VPS_IP] [VPS_USER] [DOMAIN_NAME(optional)] [--force-nginx]"
     echo "Example: ./deploy.sh 192.168.1.100 ubuntu lumamatcha.com"
+    echo "Example (force nginx overwrite): ./deploy.sh 192.168.1.100 ubuntu lumamatcha.com --force-nginx"
     exit 1
 fi
 
-echo "🚀 Starting fixed deployment to $VPS_IP..."
+echo "🚀 Starting deployment to $VPS_IP..."
 
 # Clean previous builds
 echo "🧹 Cleaning previous builds..."
@@ -49,6 +61,8 @@ scp nginx-flutter.conf $VPS_USER@$VPS_IP:~/
 # Execute deployment commands on VPS
 echo "⚙️ Setting up on VPS with configuration..."
 ssh $VPS_USER@$VPS_IP << EOF
+    # Pass the force flag to the remote script
+    FORCE_OVERWRITE="$FORCE_OVERWRITE"
     # Backup existing site if it exists
     if [ -d "/var/www/luma-matcha" ]; then
         sudo cp -r /var/www/luma-matcha /var/www/luma-matcha-backup-\$(date +%Y%m%d_%H%M%S)
@@ -76,24 +90,65 @@ ssh $VPS_USER@$VPS_IP << EOF
     sudo apt update
     sudo apt install nginx -y
     
-    # Configure Nginx with Flutter-specific settings
-    sudo mv ~/nginx-flutter.conf /etc/nginx/sites-available/luma-matcha
-    sudo ln -sf /etc/nginx/sites-available/luma-matcha /etc/nginx/sites-enabled/
+    # Check if Nginx config already exists and handle accordingly
+    NGINX_CONFIG_EXISTS=false
+    if [ -f "/etc/nginx/sites-available/luma-matcha" ]; then
+        NGINX_CONFIG_EXISTS=true
+        echo "⚠️  Existing Nginx configuration found at /etc/nginx/sites-available/luma-matcha"
+    fi
     
-    # Remove default site
-    sudo rm -f /etc/nginx/sites-enabled/default
-    
-    # Test Nginx configuration
-    sudo nginx -t
-    
-    if [ \$? -eq 0 ]; then
-        # Reload Nginx
-        sudo systemctl reload nginx
-        sudo systemctl enable nginx
-        echo "✅ Nginx configuration updated and reloaded"
+    # Determine whether to update Nginx config
+    UPDATE_NGINX=false
+    if [ "$NGINX_CONFIG_EXISTS" = false ]; then
+        echo "📝 No existing Nginx config found, will create new one"
+        UPDATE_NGINX=true
+    elif [ "\$FORCE_OVERWRITE" = "--force-nginx" ]; then
+        echo "🔄 Force overwrite flag detected, updating Nginx configuration"
+        UPDATE_NGINX=true
     else
-        echo "❌ Nginx configuration test failed"
-        exit 1
+        echo "🤔 Existing Nginx configuration detected."
+        echo "   Current config will be backed up as luma-matcha.backup.\$(date +%Y%m%d_%H%M%S)"
+        echo "   To force overwrite next time, use: ./deploy.sh [VPS_IP] [VPS_USER] [DOMAIN] --force-nginx"
+        read -p "   Do you want to overwrite the existing Nginx config? (y/N): " -r REPLY
+        if [[ \$REPLY =~ ^[Yy]\$ ]]; then
+            UPDATE_NGINX=true
+        else
+            echo "⏭️  Skipping Nginx configuration update"
+            UPDATE_NGINX=false
+        fi
+    fi
+    
+    # Update Nginx configuration if needed
+    if [ "\$UPDATE_NGINX" = true ]; then
+        # Backup existing config if it exists
+        if [ "\$NGINX_CONFIG_EXISTS" = true ]; then
+            sudo cp /etc/nginx/sites-available/luma-matcha /etc/nginx/sites-available/luma-matcha.backup.\$(date +%Y%m%d_%H%M%S)
+            echo "✅ Existing config backed up"
+        fi
+        
+        # Configure Nginx with Flutter-specific settings
+        sudo mv ~/nginx-flutter.conf /etc/nginx/sites-available/luma-matcha
+        sudo ln -sf /etc/nginx/sites-available/luma-matcha /etc/nginx/sites-enabled/
+        
+        # Remove default site
+        sudo rm -f /etc/nginx/sites-enabled/default
+        
+        # Test Nginx configuration
+        sudo nginx -t
+        
+        if [ \$? -eq 0 ]; then
+            # Reload Nginx
+            sudo systemctl reload nginx
+            sudo systemctl enable nginx
+            echo "✅ Nginx configuration updated and reloaded"
+        else
+            echo "❌ Nginx configuration test failed"
+            exit 1
+        fi
+    else
+        # Clean up uploaded config file since we're not using it
+        rm -f ~/nginx-flutter.conf
+        echo "ℹ️  Using existing Nginx configuration"
     fi
     
     # Clean up
@@ -113,7 +168,7 @@ rm luma-matcha-web.tar.gz
 echo ""
 echo "🎉 Deployment script completed!"
 echo ""
-echo "🔧 Common fixes applied:"
+echo "🔧 Fixes available in this deployment:"
 echo "   ✅ Fixed MIME types for .js and .wasm files"
 echo "   ✅ Added proper Cross-Origin headers"
 echo "   ✅ Fixed Content Security Policy for Flutter web"
@@ -127,5 +182,7 @@ else
     echo "   http://$VPS_IP"
 fi
 echo ""
-echo "🐛 If you still see issues, check browser console and nginx logs:"
-echo "   sudo tail -f /var/log/nginx/error.log"
+echo "� Tips:"
+echo "   • To force Nginx config overwrite: ./deploy.sh $VPS_IP $VPS_USER $DOMAIN_NAME --force-nginx"
+echo "   • Check nginx logs: sudo tail -f /var/log/nginx/error.log"
+echo "   • Test config: sudo nginx -t"
