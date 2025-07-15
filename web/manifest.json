@@ -3,12 +3,22 @@
     "short_name": "Luma Matcha",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#fefff a",
+    "background_color": "#fefffa",
     "theme_color": "#456330",
     "description": "Luma Matcha Jogja - Your #MatchaToGo at Yogyakarta",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
+        {
+            "src": "favicon.ico",
+            "sizes": "16x16",
+            "type": "image/x-icon"
+        },
+        {
+            "src": "favicon.png",
+            "sizes": "32x32",
+            "type": "image/png"
+        },
         {
             "src": "icons/Icon-192.png",
             "sizes": "192x192",

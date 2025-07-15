@@ -439,9 +439,10 @@ update-favicon:
 	@sips -z 192 192 assets/logo_transparent.png --out web/icons/Icon-maskable-192.png
 	@sips -z 512 512 assets/logo_transparent.png --out web/icons/Icon-maskable-512.png
 	@echo "$(YELLOW)Creating favicon.ico for Safari compatibility...$(NC)"
-	@magick assets/logo_transparent.png -define icon:auto-resize=16,32,48,64 web/favicon.ico
+	@magick assets/logo_transparent.png -resize 16x16 -background white -flatten web/favicon.ico
 	@echo "$(GREEN)✅ Web favicon updated$(NC)"
 	@echo "$(YELLOW)Run 'make build' to apply changes$(NC)"
+	@echo "$(YELLOW)💡 Safari tip: Clear cache and hard refresh (⌘+Shift+R)$(NC)"
 
 # Backup current deployment
 backup:
