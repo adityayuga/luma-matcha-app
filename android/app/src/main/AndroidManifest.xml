@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Internet permission for URL launching -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    
     <application
         android:label="Luma Matcha"
         android:name="${applicationName}"
@@ -41,5 +44,27 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- Allow querying for web browsers -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="http" />
+        </intent>
+        <!-- Allow querying for WhatsApp -->
+        <package android:name="com.whatsapp" />
+        <!-- Allow querying for Instagram -->
+        <package android:name="com.instagram.android" />
+        <!-- Allow querying for TikTok -->
+        <package android:name="com.ss.android.ugc.trill" />
+        <package android:name="com.zhiliaoapp.musically" />
+        <!-- Allow querying for Grab -->
+        <package android:name="com.grabtaxi.passenger" />
+        <!-- Allow querying for Maps -->
+        <package android:name="com.google.android.apps.maps" />
+        <!-- Allow querying for Samsung Browser -->
+        <package android:name="com.sec.android.app.sbrowser" />
     </queries>
 </manifest>
