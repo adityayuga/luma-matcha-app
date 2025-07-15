@@ -429,6 +429,18 @@ update-deps:
 	@flutter pub upgrade
 	@echo "$(GREEN)✅ Dependencies updated$(NC)"
 
+# Update web favicon and icons from assets
+update-favicon:
+	@echo "$(YELLOW)Updating web favicon from assets/logo_transparent.png...$(NC)"
+	@sips -z 16 16 assets/logo_transparent.png --out web/favicon-16x16.png
+	@sips -z 32 32 assets/logo_transparent.png --out web/favicon.png
+	@sips -z 192 192 assets/logo_transparent.png --out web/icons/Icon-192.png
+	@sips -z 512 512 assets/logo_transparent.png --out web/icons/Icon-512.png
+	@sips -z 192 192 assets/logo_transparent.png --out web/icons/Icon-maskable-192.png
+	@sips -z 512 512 assets/logo_transparent.png --out web/icons/Icon-maskable-512.png
+	@echo "$(GREEN)✅ Web favicon updated$(NC)"
+	@echo "$(YELLOW)Run 'make build' to apply changes$(NC)"
+
 # Backup current deployment
 backup:
 	@echo "$(YELLOW)Creating backup of current deployment...$(NC)"
@@ -470,6 +482,8 @@ help-build:
 	@echo "  make fix-android     - Fix common Android build issues"
 	@echo "  make check-android   - Check Android environment"
 	@echo "  make check-size      - Check built app sizes"
+	@echo "  make update-deps     - Update Flutter dependencies"
+	@echo "  make update-favicon  - Update web favicon from assets logo"
 
 help-mobile:
 	@echo "$(GREEN)Mobile Development Commands:$(NC)"
