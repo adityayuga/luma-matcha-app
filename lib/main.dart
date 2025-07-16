@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'screens/privacy_policy_page.dart';
+import 'screens/matcha_menu_page.dart';
 
 void main() {
   runApp(const LumaMatchaApp());
@@ -55,6 +56,11 @@ final GoRouter _router = GoRouter(
       name: 'privacy-policy',
       builder: (context, state) => const PrivacyPolicyPage(),
     ),
+    GoRoute(
+      path: '/matcha-menu',
+      name: 'matcha-menu',
+      builder: (context, state) => const MatcDrinkMenuPage(),
+    ),
   ],
   errorBuilder:
       (context, state) => Scaffold(
@@ -99,6 +105,14 @@ class MenuPage extends StatelessWidget {
   const MenuPage({super.key});
 
   List<MenuItem> get items => [
+    MenuItem(
+      title: 'Matcha Drinks',
+      icon: Icon(Icons.local_drink, color: Colors.white),
+      data: MenuItemData(
+        menuType: 'navigate',
+        url: '/matcha-menu',
+      ),
+    ),
     MenuItem(
       title: 'Menu',
       icon: Icon(Icons.menu_book, color: Colors.white),
@@ -282,6 +296,8 @@ class MenuPage extends StatelessWidget {
                               },
                               extra: {'menuItem': item},
                             );
+                          } else if (item.data?.menuType == 'navigate') {
+                            context.go(item.data!.url);
                           }
                         },
                         child: Container(
